@@ -2,16 +2,16 @@
 // Subnet address prefixes are derived from the VNet CIDR via cidrSubnet().
 
 @description('Azure region for the hub virtual network.')
-param location string = resourceGroup().location
+param location string
 
 @description('Prefix used in resource names (e.g. js-hub-vnet).')
-param namePrefix string = 'js'
+param namePrefix string
 
 @description('Base IPv4 address for the virtual network (without suffix).')
-param ipAddressSpace string = '10.0.0.0'
+param ipAddressSpace string
 
 @description('CIDR suffix for the VNet, including leading slash (e.g. /16).')
-param CIDR string = '/16'
+param CIDR string
 
 @description('Subnets to create. Keys are subnet names; values are prefix lengths (newCIDR) passed to cidrSubnet().')
 param subnets object = {
