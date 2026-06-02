@@ -4,10 +4,10 @@ targetScope = 'subscription'
 param location string
 
 @description('The prefix of the resource group.')
-param prefix string
+param namePrefix string
 
 resource coreResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: '${prefix}-core-rg'
+  name: '${namePrefix}-core-rg'
   location: location
 }
 
