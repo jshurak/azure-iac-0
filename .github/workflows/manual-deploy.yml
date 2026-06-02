@@ -37,7 +37,7 @@ jobs:
           template-file: ./main.bicep
           parameters-file: ./main.bicepparam
           #parameters: '{subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}}'
-          location: eastus2g
+          location: eastus2
       - name: What-if Preview
         uses: azure/bicep-deploy@v2
         with:
