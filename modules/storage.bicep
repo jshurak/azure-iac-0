@@ -6,6 +6,6 @@ module coreStorage 'br/public:avm/res/storage/storage-account:0.32.1' = {
     name: '${namePrefix}-core-storage'
     allowBlobPublicAccess: false
     kind: 'StorageV2'
-    skuName: 
+    skuName: storageSk
   }
 }
