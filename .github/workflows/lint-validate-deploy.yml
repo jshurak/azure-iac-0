@@ -38,7 +38,7 @@ jobs:
           resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP_NAME }}
           template-file: ./main.bicep
           #parameters-file: ./main.bicepparam
-          parameters: '{subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}}'
+          parameters: '{subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}, location: eastus2}'
       - name: What-if Preview
         uses: azure/bicep-deploy@v2
         with:
@@ -50,7 +50,7 @@ jobs:
           resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP_NAME }}
           template-file: ./main.bicep
           #parameters-file: ./main.bicepparam
-          parameters: '{subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}}'
+          parameters: '{subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}, location: eastus2}'
   deploy:
     runs-on: ubuntu-latest
     environment: production
@@ -75,6 +75,6 @@ jobs:
           resource-group-name: ${{ secrets.AZURE_RESOURCE_GROUP_NAME }}
           template-file: ./main.bicep
           #parameters-file: ./main.bicepparam
-          parameters: '{subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}, keyVaultResourceGroupName: ${{ secrets.AZURE_KEYVAULT_RESOURCEGROUP_NAME }}, keyVaultName: ${{secrets.AZURE_KEYVAULT_NAME}}}'
+          parameters: '{subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}, location: eastus2}'
           action-on-unmanage-resources: delete
           deny-settings-mode: none
