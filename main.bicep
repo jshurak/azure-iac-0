@@ -11,3 +11,10 @@ resource coreResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   location: location
 }
 
+module vnet 'modules/network.bicep' = {
+  scope: coreResourceGroup
+}
+
+module kevault 'modules/keyvault.bicep' = {
+  scope: coreResourceGroup
+}
