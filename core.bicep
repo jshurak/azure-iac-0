@@ -1,12 +1,12 @@
-param location string
-param namePrefix string
+param location string = resourceGroup().location
+param namePrefix string = 'js'
 param ipAddressSpace string = '10.0.0.0'
 param CIDR string = '/16'
 
 @description('Subnet name (key) and prefix length for cidrSubnet newCIDR (value), e.g. Firewall: 26')
 param subnets object = {
   Firewall: '26'
-  Gateway: '27'
+  Gateway: '26'
   Bastion: '26'
 }
 
