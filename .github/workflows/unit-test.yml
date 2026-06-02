@@ -40,7 +40,7 @@ jobs:
           template-file: ./main.bicep
           parameters-file: ./main.bicepparam
           #parameters: '{subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}}'
-          location: eastus
+          location: eastus2
       - name: What-if Preview
         uses: azure/bicep-deploy@v2
         with:
@@ -53,7 +53,7 @@ jobs:
           template-file: ./main.bicep
           parameters-file: ./main.bicepparam
           #parameters: '{subscription: ${{ secrets.AZURE_SUBSCRIPTION_ID }}}'
-          location: eastus
+          location: eastus2
       - name: Run Checkov actions/checkout
         id:  checkov
         uses: bridgecrewio/checkov-action@master
