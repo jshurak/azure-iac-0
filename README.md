@@ -1,20 +1,23 @@
 # azure-iac-0
 
-Infrastructure-as-code for an Azure landing zone, built with [Bicep](https://learn.microsoft.com/azure/azure-resource-manager/bicep/overview). The repo defines a subscription-scoped entry template, reusable modules for hub networking and Key Vault, and GitHub Actions workflows for linting, validation, security scanning, and deployment.
+Infrastructure-as-code for an Azure landing zone, built with [Bicep](https://learn.microsoft.com/azure/azure-resource-manager/bicep/overview). Templates use `@description` and `metadata` decorators so parameter help appears in the IDE, deployment UI, and generated ARM JSON.
 
 ## Overview
 
-| Component | Purpose |
-|-----------|---------|
-| `main.bicep` | Subscription-scoped template that creates the core resource group (`{prefix}-core-rg`). |
-| `modules/network.bicep` | Hub virtual network with Firewall, Gateway, and Bastion subnets (Azure Verified Modules). |
-| `modules/keyvault.bicep` | Key Vault with RBAC authorization and template-deployment access enabled. |
+`main.bicep` deploys at **subscription** scope and composes the core landing zone:
 
-Modules are intended to be deployed into the core resource group (or other groups you define) as the landing zone grows. Wire them from `main.bicep` or separate scoped deployments when you are ready to roll out network and secrets infrastructure.
+| Resource / module | Description |
+|-------------------|-------------|
+| `{namePrefix}-core-rg` | Core resource group for shared infrastructure. |
+| `modules/network.bicep` | Hub VNet (`{namePrefix}-hub-vnet`) with Firewall, Gateway, and Bastion subnets. |
+| `modules/keyvault.bicep` | Key Vault with RBAC and template-deployment access (AVM). |
+| `modules/storage.bicep` | StorageV2 account with public blob access disabled (AVM). |
+
+Default environment values live in [`main.bicepparam`](main.bicepparam).
 
 ### Hub network layout
 
-`modules/network.bicep` provisions a hub VNet (`{namePrefix}-hub-vnet`) on `10.0.0.0/16` by default and derives subnet prefixes with `cidrSubnet()`:
+Subnets are carved from the VNet CIDR with `cidrSubnet()` (default space `10.0.0.0/16`):
 
 | Subnet | Default prefix length |
 |--------|------------------------|
@@ -22,52 +25,78 @@ Modules are intended to be deployed into the core resource group (or other group
 | Gateway | /26 |
 | Bastion | /26 |
 
-Both modules pull from the public Bicep registry ([AVM virtual network](https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/network/virtual-network), [AVM Key Vault](https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/key-vault/vault)).
+Registry modules: [AVM virtual network](https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/network/virtual-network), [AVM Key Vault](https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/key-vault/vault), [AVM storage account](https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/storage/storage-account).
 
 ## Repository structure
 
 ```
 .
-├── main.bicep                 # Subscription entry point (resource group)
+├── main.bicep                 # Subscription entry: RG + network, Key Vault, storage
+├── main.bicepparam            # Default parameter values for main.bicep
 ├── modules/
 │   ├── network.bicep          # Hub VNet and subnets
-│   └── keyvault.bicep         # Key Vault
+│   ├── keyvault.bicep         # Key Vault
+│   └── storage.bicep          # Storage account
 └── .github/workflows/
     ├── unit-test.yml          # PR: lint, validate, what-if, Checkov
     └── lint-validate-deploy.yml  # main: lint, validate, deploy
 ```
 
+## Documentation in templates
+
+Each `.bicep` file documents its contract with Bicep decorators:
+
+- **`metadata description`** — short summary of the file (shown in template metadata).
+- **`@description`** — on parameters, variables, resources, and modules (tooltips in VS Code and parameter files in the portal).
+
+Parameter tables below mirror those decorators. To view them locally, open any `.bicep` file and hover a parameter name, or run:
+
+```bash
+az bicep build --file main.bicep
+# Inspect parameters[].metadata.description in main.json
+```
+
 ## Prerequisites
 
-- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) with Bicep support (`az bicep install` if needed)
-- An Azure subscription and permissions to create resource groups and deploy templates
-- For CI/CD: a GitHub repository with Azure OIDC federation configured for `azure/login@v2`
+- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) with Bicep (`az bicep install` if needed)
+- Azure subscription with rights to deploy at subscription scope and create resource groups
+- For CI/CD: GitHub OIDC federation for `azure/login@v2`
 
 ## Parameters
 
 ### `main.bicep`
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `location` | `eastus2` | Azure region for the core resource group. |
-| `prefix` | `js` | Name prefix; resource group becomes `{prefix}-core-rg`. |
+| Parameter | Default (`main.bicepparam`) | Description |
+|-----------|----------------------------|-------------|
+| `location` | `eastus2` | Azure region for the core resource group and deployed modules. |
+| `namePrefix` | `js` | Prefix applied to resource names (for example, `js-core-rg`, `js-hub-vnet`). |
+| `storageSku` | `Standard_LRS` | Replication SKU for the core storage account (`Standard_LRS` or `Standard_ZRS`). |
+| `ipAddressSpace` | `10.0.0.0` | Base IPv4 address for the hub VNet, without the CIDR suffix. |
+| `CIDR` | `/16` | CIDR suffix for the hub VNet, including the leading slash. |
 
 ### `modules/network.bicep`
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `location` | Resource group location | Azure region. |
-| `namePrefix` | `js` | Prefix for the VNet name. |
-| `ipAddressSpace` | `10.0.0.0` | VNet base address (without CIDR suffix). |
-| `CIDR` | `/16` | CIDR suffix for the VNet. |
-| `subnets` | Firewall, Gateway, Bastion `/26` each | Subnet names and prefix lengths for `cidrSubnet()`. |
+| `location` | (required) | Azure region for the hub virtual network. |
+| `namePrefix` | (required) | Prefix used in resource names (for example, `js-hub-vnet`). |
+| `ipAddressSpace` | (required) | Base IPv4 address for the virtual network (without suffix). |
+| `CIDR` | (required) | CIDR suffix for the VNet, including leading slash (for example, `/16`). |
+| `subnets` | Firewall, Gateway, Bastion `/26` | Subnet names and prefix lengths passed to `cidrSubnet()`. |
 
 ### `modules/keyvault.bicep`
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `namePrefix` | `js` | Prefix for the vault name. |
-| `location` | Resource group location | Azure region. |
+| `namePrefix` | `js` | Prefix used in the Key Vault name. |
+| `location` | Resource group location | Azure region for the Key Vault. |
+
+### `modules/storage.bicep`
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `namePrefix` | (required) | Prefix used in the storage account name. |
+| `storageSku` | (required) | Azure Storage replication SKU (`Standard_LRS` or `Standard_ZRS`). |
 
 ## Local development
 
@@ -78,80 +107,74 @@ az login
 az account set --subscription "<subscription-id>"
 ```
 
-Compile and lint templates:
+Compile all templates:
 
 ```bash
 az bicep build --file main.bicep
 az bicep build --file modules/network.bicep
 az bicep build --file modules/keyvault.bicep
+az bicep build --file modules/storage.bicep
 ```
 
-Deploy the subscription template (creates the core resource group):
+Deploy with parameter file:
 
 ```bash
 az deployment sub create \
   --location eastus2 \
   --template-file main.bicep \
-  --parameters location=eastus2 prefix=js
+  --parameters main.bicepparam
 ```
 
-Deploy a module into an existing resource group:
+Override a single parameter:
 
 ```bash
-az deployment group create \
-  --resource-group js-core-rg \
-  --template-file modules/network.bicep
-
-az deployment group create \
-  --resource-group js-core-rg \
-  --template-file modules/keyvault.bicep
+az deployment sub create \
+  --location eastus2 \
+  --template-file main.bicep \
+  --parameters main.bicepparam namePrefix=dev
 ```
 
-Preview changes before apply:
+Preview changes:
 
 ```bash
-az deployment group what-if \
-  --resource-group js-core-rg \
-  --template-file modules/network.bicep
+az deployment sub what-if \
+  --location eastus2 \
+  --template-file main.bicep \
+  --parameters main.bicepparam
 ```
 
 ## CI/CD
 
 ### Pull requests (`unit-test.yml`)
 
-Runs on pull requests targeting `main`:
+On PRs to `main`:
 
 1. **Lint** — `az bicep build` on `main.bicep`
-2. **Validate** — Azure login (OIDC), deployment validate and what-if against the configured resource group
-3. **Security** — [Checkov](https://www.checkov.io/) for Bicep (SARIF uploaded to GitHub Security)
+2. **Validate** — OIDC login, deployment validate and what-if
+3. **Security** — [Checkov](https://www.checkov.io/) for Bicep (SARIF to GitHub Security)
 
 ### `main` branch (`lint-validate-deploy.yml`)
 
-Runs on push to `main`:
-
-1. **Lint** and **Validate** (same as above)
-2. **Deploy** — deployment stack create to the production environment (requires approval if you configure the `production` environment in GitHub)
+On push to `main`: lint, validate, then **deploy** (GitHub `production` environment).
 
 ### Required GitHub secrets
 
 | Secret | Used for |
 |--------|----------|
-| `AZURE_CLIENT_ID` | OIDC app registration client ID |
-| `AZURE_TENANT_ID` | Azure AD tenant ID |
+| `AZURE_CLIENT_ID` | OIDC application client ID |
+| `AZURE_TENANT_ID` | Microsoft Entra tenant ID |
 | `AZURE_SUBSCRIPTION_ID` | Target subscription |
-| `AZURE_RESOURCE_GROUP_NAME` | Resource group for validate / what-if / deploy |
+| `AZURE_RESOURCE_GROUP_NAME` | Resource group for validate / deploy workflows |
 | `AZURE_KEYVAULT_RESOURCEGROUP_NAME` | Key Vault resource group (workflow parameters) |
 | `AZURE_KEYVAULT_NAME` | Key Vault name (workflow parameters) |
 
-Workflows also reference `main.bicepparam` and inline parameters for subscription and Key Vault settings. Add or update `main.bicepparam` when you connect `main.bicep` to Key Vault and align parameter names with the workflows.
+Workflows reference `main.bicepparam` and may pass additional inline parameters. Keep workflow parameter names aligned with `main.bicep` as the template evolves.
 
-Configure [federated credentials](https://learn.microsoft.com/entra/workload-id/workload-identity-federation-create-trust) on the app registration so GitHub Actions can authenticate without stored client secrets.
+Configure [federated credentials](https://learn.microsoft.com/entra/workload-id/workload-identity-federation-create-trust) on the app registration for passwordless GitHub Actions login.
 
-## Roadmap / integration notes
+## CI scope note
 
-- Compose `modules/network.bicep` and `modules/keyvault.bicep` from `main.bicep` (nested module deployments scoped to `coreResourceGroup`).
-- Add `main.bicepparam` (and match workflow `parameters` / `parameters-file` inputs).
-- Reconcile deployment scope: `main.bicep` uses `targetScope = 'subscription'`, while workflows currently use resource group scope—adjust one side so validate and deploy match your intended topology.
+`main.bicep` uses `targetScope = 'subscription'`, while workflows may target **resource group** scope. Align workflow `scope` and deployment commands with subscription-level deployment if you validate or deploy the full landing zone from `main.bicep`.
 
 ## License
 
