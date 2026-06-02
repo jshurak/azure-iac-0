@@ -7,8 +7,8 @@ param location string
 param namePrefix string
 
 @allowed([
-  'StandardV2_LRS'
-  'StandardV2_ZRS'
+  'Standard_LRS'
+  'Standard_ZRS'
 ])
 param storageSku string
 
