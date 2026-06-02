@@ -1,5 +1,6 @@
 // Hub virtual network and subnets for the core landing zone.
 // Subnet address prefixes are derived from the VNet CIDR via cidrSubnet().
+metadata description = 'Hub virtual network and dedicated subnets for the core landing zone.'
 
 @description('Azure region for the hub virtual network.')
 param location string
@@ -20,10 +21,10 @@ param subnets object = {
   Bastion: '26'
 }
 
-// Full VNet address space in CIDR notation (e.g. 10.0.0.0/16).
+@description('Full VNet address space in CIDR notation (for example, 10.0.0.0/16).')
 var vnetAddressPrefix = '${ipAddressSpace}${CIDR}'
 
-// AVM virtual network module: https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/network/virtual-network
+@description('Hub virtual network from Azure Verified Modules (AVM).')
 module hubNetwork 'br/public:avm/res/network/virtual-network:0.9.0' = {
   params: {
     name: '${namePrefix}-hub-vnet'
